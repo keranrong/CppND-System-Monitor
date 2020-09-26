@@ -12,6 +12,8 @@ using std::stof;
 using std::string;
 using std::to_string;
 using std::vector;
+
+#define MB_TO_KB 1024;
 namespace {
 // used internally for LinuxParser, extract the accumulated cpu util info, used
 // for LinuxParser::CpuUtilization()
@@ -22,7 +24,6 @@ void CpuInfo(long& total_idle_, long& total_nonidle_) {
   std::string key;
   long user_, nice_, system_, idle_, iowaite_, irq_, softirq_, steal_, guest_,
       guest_nice_;
-  long prev_idle, prev_total;
 
   if (stream.is_open()) {
     while (std::getline(stream, line)) {
@@ -65,15 +66,15 @@ string LinuxParser::OperatingSystem() {
 
 // DONE: An example of how to read data from the filesystem
 string LinuxParser::Kernel() {
-  string os, kernel;
+  string os, kernel, verison;
   string line;
   std::ifstream stream(kProcDirectory + kVersionFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
-    linestream >> os >> kernel;
+    linestream >> os >> kernel >> verison;
   }
-  return kernel;
+  return kernel + " : " + verison;
 }
 
 // BONUS: Update this to use std::filesystem
@@ -314,7 +315,7 @@ long LinuxParser::Ram(int pid) {
     std::replace(line.begin(), line.end(), ':', ' ');
     std::istringstream linestream(line);
     linestream >> key >> value;
-    if (key == "VmSize") return value;
+    if (key == "VmSize") return value / MB_TO_KB;
   }
   return 0;
 }
@@ -362,5 +363,5 @@ long LinuxParser::UpTime(int pid) {
   linestream >> intunused_ >> strunused_ >> strunused_;
   for (int i = 4; i < 22; i++) linestream >> intunused_;
   linestream >> uptime_;
-  return uptime_ / sysconf(_SC_CLK_TCK);
+  return LinuxParser::UpTime() - uptime_ / sysconf(_SC_CLK_TCK);
 }
